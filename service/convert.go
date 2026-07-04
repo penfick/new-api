@@ -63,6 +63,15 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 			!strings.HasSuffix(openAIRequest.Model, thinkingSuffix) {
 			openAIRequest.Model = openAIRequest.Model + thinkingSuffix
 		}
+		// 渠道开启 pass_through_body 时，把 Anthropic 的 thinking 字段透传给上游。
+		// 这样 messages 协议(/v1/messages) 也能触发支持 thinking:{type:enabled,...}
+		// 的模型（如 GLM 系列）的思考模式。复用 openai 协议已有的 pass_through_body
+		// 开关：两套协议共用这一个渠道设置。
+		if info.ChannelSetting.PassThroughBodyEnabled && claudeRequest.Thinking != nil {
+			if thinkingBytes, err := common.Marshal(claudeRequest.Thinking); err == nil {
+				openAIRequest.THINKING = thinkingBytes
+			}
+		}
 	}
 
 	// Convert stop sequences
